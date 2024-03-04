@@ -13,6 +13,7 @@ with open("graph.txt", "r") as file:
         line = [change_type(x) for x in line]
         graph.append(line)
 
+
 def make_adj_matrix(graph) -> dict:
     n = len(graph)
     adj_matrix = {}
@@ -54,7 +55,19 @@ def edge_deg_sorted(graph: dict) -> list:
 
 def number_of_edges(graph: dict) -> int:
     return len(graph)
-    
+
+
+def nice_print(graph: dict):
+    for key, value in graph.items():
+        print(f"{key} :", end=" ")
+        if value:
+            print(*value, sep=" ")
+        else:
+            print()
+
+
+def sum_weights(graph: dict) -> int:
+    return sum(graph.values())
 
 
 print("\na:")
@@ -73,15 +86,16 @@ adj_edge_list_with_weights = make_adj_edge_list_with_weights(graph)
 pprint(adj_edge_list_with_weights)
 
 print("\ne:")
-pprint(adj_matrix)
+nice_print(adj_matrix)
 
 print("\nf.a:")
 edge_deg = edge_deg_sorted(adj_matrix)
 pprint(edge_deg)
 
 print("\nf.b:")
-edge_deg = number_of_edges(adj_edge_list_with_weights)
-pprint(edge_deg)
+number = number_of_edges(adj_edge_list_with_weights)
+pprint(number)
 
-
-
+print("\nf.c:")
+edge_sum = sum_weights(adj_edge_list_with_weights)
+pprint(edge_sum)
