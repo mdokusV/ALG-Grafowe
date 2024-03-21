@@ -10,7 +10,7 @@ class Vertex:
         self.visited = False
 
     def __str__(self):
-        return f"[{self.index}] successors:{list(self.successors.keys())}, predecessors:{list(self.predecessors.keys())}"
+        return f"[{self.index+1}] successors:{list(map(lambda x: x+1, self.successors.keys()))}, predecessors:{list(map(lambda x: x+1, self.predecessors.keys()))}"
 
 
 class Subgraph:
@@ -23,9 +23,11 @@ class Subgraph:
     def __str__(self):
         matrix_info = ""
         for i, j in [(1, 1), (1, 0), (0, 1), (0, 0)]:
-            matrix_info += f"V{i}{j}: {self.reachability_matrix[i][j]}\n"
+            matrix_info += (
+                f"V{i}{j}: {[item+1 for item in self.reachability_matrix[i][j]]}\n"
+            )
 
-        return f"{[vertex.index for vertex in self.vertex]}\n{matrix_info}\n"
+        return f"{[vertex.index+1 for vertex in self.vertex]}\n{matrix_info}\n"
 
     def reset_reachability_matrix(self):
         self.reachability_matrix = [[[], []], [[], []]]
@@ -94,13 +96,14 @@ class Vertices:
 
     def __str__(self):
         scc_info = "\n".join(
-            str(component) for component in self.strong_connected_components
+            " ".join(str(item + 1) for item in component)
+            for component in self.strong_connected_components
         )
         separator = "-----------------------------------------------\n\n"
         lists_to_analize_indices = []
         for subgraph in self.lists_to_analize:
             lists_to_analize_indices.append(
-                [vertex.index for vertex in subgraph.vertex]
+                [vertex.index + 1 for vertex in subgraph.vertex]
             )
 
         return f"Strongly Connected Components:\n{scc_info}\nLists to Analyze:\n{lists_to_analize_indices}\n{separator}"

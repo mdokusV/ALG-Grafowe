@@ -1,6 +1,7 @@
 {
     "cSpell.words": [
-        "leifman"
+        "leifman",
+        "succ"
     ],
     "code-runner.fileDirectoryAsCwd": true,
     "code-runner.runInTerminal": true,
