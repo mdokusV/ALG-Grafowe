@@ -75,11 +75,11 @@ stack.append(initial_root)
 
 
 def dfs(vertex: Vertex):
+    vertex.remove_child()
     print(vertex)
     while vertex.free_children:
         child = vertex.free_children.popitem()[1]
         stack.append(child)
-        child.remove_child()
         dfs(child)
 
 
