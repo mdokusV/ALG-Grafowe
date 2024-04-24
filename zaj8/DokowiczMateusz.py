@@ -74,13 +74,22 @@ stack: deque[Vertex] = deque()
 stack.append(initial_root)
 
 
+def get_permutation(numbers: list, n: int):
+    binary_list = [int(i) for i in list(bin(n)[2:].zfill(len(numbers)))]
+    return [numbers[i] for i, v in enumerate(binary_list) if v == 1]
+
+
 def dfs(vertex: Vertex):
     vertex.remove_child()
     print(vertex)
+    permutation_number = 0
+
     while vertex.free_children:
         child = vertex.free_children.popitem()[1]
         stack.append(child)
         dfs(child)
 
 
-dfs(initial_root)
+# dfs(initial_root)
+
+print(get_permutation([1, 2, 3, 4], 5))
