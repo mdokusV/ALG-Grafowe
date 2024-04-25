@@ -36,8 +36,10 @@ class Vertex:
             vert.free_children[self.index] = self
 
 
-def get_permutation(items: list[Vertex], n: int):
-    binary_list = [not ((bool(int(i)))) for i in list(bin(n)[2:].zfill(len(items)))]
+def get_permutation(items: list[Vertex], n: int) -> list[Vertex]:
+    if len(items) == 0:
+        return []
+    binary_list = [not (bool(int(i))) for i in list(bin(n)[2:].zfill(len(items)))]
     return [items[i] for i, v in enumerate(binary_list) if v == True]
 
 
@@ -52,6 +54,11 @@ class Vertices:
     def __str__(self):
         return "".join([str(vertex) + "\n" for vertex in self.vertex_list])
 
+    def init_dfs(self, vertex: Vertex):
+        vertex.remove_child()
+        self.unmarked_vertices.remove(vertex)
+        self.dfs(vertex)
+
     def dfs(self, vertex: Vertex):
         print(vertex)
         permutation_number = 0
@@ -63,15 +70,16 @@ class Vertices:
             if len(self.waiting_to_check) == 0:
                 if len(self.unmarked_vertices) == 0:
                     self.number_of_trees += 1
-                self.reverse_add_children_from_permutation(permutation)
+                self.reverse_add_children_from_permutation([vertex])
                 return
             next_vertex = self.waiting_to_check.pop()
             self.dfs(next_vertex)
-            permutation_number -= 1
+            print(f"back to {next_vertex}")
+            self.reverse_add_children_from_permutation(permutation)
+            permutation_number += 1
             permutation = get_permutation(
                 list(vertex.free_children.values()), permutation_number
             )
-            self.reverse_add_children_from_permutation(permutation)
 
     def add_children_from_permutation(self, permutation: list[Vertex]):
         for child in permutation:
@@ -82,9 +90,8 @@ class Vertices:
 
     def reverse_add_children_from_permutation(self, permutation: list[Vertex]):
         for child in permutation:
-            if child in self.unmarked_vertices:
-                self.unmarked_vertices.add(child)
-                child.add_child()
+            self.unmarked_vertices.add(child)
+            child.add_child()
 
 
 with open("Trees.txt", "r") as file:
@@ -113,5 +120,5 @@ print(vertices)
 
 # DFS
 initial_root = vertices.vertex_list[0]
-vertices.dfs(initial_root)
+vertices.init_dfs(initial_root)
 print(vertices.number_of_trees)
