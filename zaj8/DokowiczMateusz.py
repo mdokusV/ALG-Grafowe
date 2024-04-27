@@ -1,7 +1,7 @@
 from pprint import pprint
 
 
-class Tree:
+class TreeCache:
 
     def __init__(self, root: int, children: list[int]):
         self.children = children
@@ -21,13 +21,14 @@ class Vertex:
         self.index = index
         self.connects: list[Vertex] = []
         self.free_children: dict[int, Vertex] = {}
+        self.currently_permuting_children: list[Vertex] = []
         self.degree = 0
 
     def __str__(self):
         return f"[{self.index}] degree: {self.degree}, connects:{[vert.index for vert in self.connects]}"
 
     def remove_child(self):
-        for vert in self.connects:  # TODO: maybe change it to self.free_children
+        for vert in self.connects:
             if self.index in vert.free_children:
                 vert.free_children.pop(self.index)
 
@@ -36,11 +37,22 @@ class Vertex:
             vert.free_children[self.index] = self
 
 
-def get_permutation(items: list[Vertex], n: int) -> list[Vertex]:
+def get_permutation(items: list[Vertex], n: int) -> tuple[list[Vertex], bool]:
     if len(items) == 0:
-        return []
+        if n == 0:
+            return [], False
+        else:
+            return [], True
     binary_list = [not (bool(int(i))) for i in list(bin(n)[2:].zfill(len(items)))]
-    return [items[i] for i, v in enumerate(binary_list) if v == True]
+    if len(binary_list) != len(items):
+        return [], True
+    return [items[i] for i, v in enumerate(binary_list) if v == True], False
+
+
+def show_permutation(items: list[Vertex]) -> str:
+    out_string = " ".join([str(item.index) for item in items])
+    print(out_string)
+    return out_string
 
 
 class Vertices:
@@ -50,6 +62,7 @@ class Vertices:
         self.unmarked_vertices: set[Vertex] = set(self.vertex_list)
         self.waiting_to_check: list[Vertex] = []
         self.number_of_trees = 0
+        self.trees: list[tuple[Vertex, Vertex]] = []
 
     def __str__(self):
         return "".join([str(vertex) + "\n" for vertex in self.vertex_list])
@@ -58,28 +71,35 @@ class Vertices:
         vertex.remove_child()
         self.unmarked_vertices.remove(vertex)
         self.dfs(vertex)
+        print(self.number_of_trees)
 
     def dfs(self, vertex: Vertex):
         print(vertex)
         permutation_number = 0
-        permutation = get_permutation(
-            list(vertex.free_children.values()), permutation_number
+        vertex.currently_permuting_children = list(vertex.free_children.values())
+        permutation, err = get_permutation(
+            vertex.currently_permuting_children, permutation_number
         )
-        while len(permutation) >= len(vertex.free_children):
+        if err == True:
+            raise SystemError("Internal system error in dfs")
+        while True:
             self.add_children_from_permutation(permutation)
             if len(self.waiting_to_check) == 0:
                 if len(self.unmarked_vertices) == 0:
                     self.number_of_trees += 1
-                self.reverse_add_children_from_permutation([vertex])
+                self.waiting_to_check.append(vertex)
                 return
             next_vertex = self.waiting_to_check.pop()
             self.dfs(next_vertex)
-            print(f"back to {next_vertex}")
+            print(f"back from {next_vertex.index} to {vertex.index}")
             self.reverse_add_children_from_permutation(permutation)
             permutation_number += 1
-            permutation = get_permutation(
-                list(vertex.free_children.values()), permutation_number
+            permutation, overflow = get_permutation(
+                vertex.currently_permuting_children, permutation_number
             )
+            if overflow:
+                self.waiting_to_check.append(vertex)
+                return
 
     def add_children_from_permutation(self, permutation: list[Vertex]):
         for child in permutation:
@@ -90,6 +110,7 @@ class Vertices:
 
     def reverse_add_children_from_permutation(self, permutation: list[Vertex]):
         for child in permutation:
+            self.waiting_to_check.pop()
             self.unmarked_vertices.add(child)
             child.add_child()
 
@@ -121,4 +142,3 @@ print(vertices)
 # DFS
 initial_root = vertices.vertex_list[0]
 vertices.init_dfs(initial_root)
-print(vertices.number_of_trees)
