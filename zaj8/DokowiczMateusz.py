@@ -3,7 +3,8 @@ from pprint import pprint
 
 class TreeCache:
 
-    def __init__(self, root: int, children: list[int]):
+    def __init__(self, roots, children: list[int]):
+        self.roots = roots
         self.children = children
 
     def __hash__(self) -> int:
@@ -22,15 +23,20 @@ class Vertex:
         self.connects: list[Vertex] = []
         self.free_children: dict[int, Vertex] = {}
         self.currently_permuting_children: list[Vertex] = []
+        self.marked: bool = False
         self.degree = 0
 
     def __str__(self):
         return f"[{self.index}] degree: {self.degree}, connects:{[vert.index for vert in self.connects]}"
 
-    def remove_child(self):
+    def remove_child(self) -> bool:
+        orphan = False
         for vert in self.connects:
             if self.index in vert.free_children:
                 vert.free_children.pop(self.index)
+                if len(vert.free_children) == 0 and not self.marked:
+                    orphan = True
+        return orphan
 
     def add_child(self):
         for vert in self.connects:
@@ -51,7 +57,7 @@ def get_permutation(items: list[Vertex], n: int) -> tuple[list[Vertex], bool]:
 
 def show_permutation(items: list[Vertex]) -> str:
     out_string = " ".join([str(item.index) for item in items])
-    print(out_string)
+    # print(out_string)
     return out_string
 
 
@@ -74,44 +80,64 @@ class Vertices:
         print(self.number_of_trees)
 
     def dfs(self, vertex: Vertex):
-        print(vertex)
+        # print(vertex)
+
+        # initiate permutation for all available children
         permutation_number = 0
         vertex.currently_permuting_children = list(vertex.free_children.values())
         permutation, err = get_permutation(
             vertex.currently_permuting_children, permutation_number
         )
+
+        # go threw all permutations
         if err == True:
             raise SystemError("Internal system error in dfs")
         while True:
-            self.add_children_from_permutation(permutation)
-            if len(self.waiting_to_check) == 0:
-                if len(self.unmarked_vertices) == 0:
-                    self.number_of_trees += 1
-                self.waiting_to_check.append(vertex)
-                return
-            next_vertex = self.waiting_to_check.pop()
-            self.dfs(next_vertex)
-            print(f"back from {next_vertex.index} to {vertex.index}")
+            bad_permutation = self.add_children_from_permutation(permutation)
+            if not bad_permutation:
+                # when there is no more waiting vertices we backtrack and add tree if there is one
+                if len(self.waiting_to_check) == 0:
+                    if len(self.unmarked_vertices) == 0:
+                        self.number_of_trees += 1
+                    self.waiting_to_check.append(vertex)
+                    return
+
+                # go deeper to next vertex
+                next_vertex = self.waiting_to_check.pop()
+                self.dfs(next_vertex)
+
+            # backtrack to previous vertex state as if we have not visited its children
+            # print(f"back from {next_vertex.index} to {vertex.index}")
             self.reverse_add_children_from_permutation(permutation)
+
+            # generate next permutation
             permutation_number += 1
             permutation, overflow = get_permutation(
                 vertex.currently_permuting_children, permutation_number
             )
+
+            # we checked all permutations so we return
             if overflow:
                 self.waiting_to_check.append(vertex)
                 return
 
-    def add_children_from_permutation(self, permutation: list[Vertex]):
+    def add_children_from_permutation(self, permutation: list[Vertex]) -> bool:
+        is_orphan = False
         for child in permutation:
             if child in self.unmarked_vertices:
                 self.waiting_to_check.append(child)
                 self.unmarked_vertices.remove(child)
-                child.remove_child()
+                child.marked = True
+                orphan = child.remove_child()
+                if orphan:
+                    is_orphan = True
+        return is_orphan
 
     def reverse_add_children_from_permutation(self, permutation: list[Vertex]):
         for child in permutation:
             self.waiting_to_check.pop()
             self.unmarked_vertices.add(child)
+            child.marked = False
             child.add_child()
 
 
@@ -127,7 +153,7 @@ with open("Trees.txt", "r") as file:
             else:
                 row.append(int(i))
         graph.append(row)
-pprint(graph)
+# pprint(graph)
 
 vertices = Vertices([Vertex(i) for i in range(len(graph))])
 for i in range(len(graph)):
@@ -137,7 +163,7 @@ for i in range(len(graph)):
             vertices.vertex_list[i].degree += 1
             vertices.vertex_list[i].free_children[j] = vertices.vertex_list[j]
 
-print(vertices)
+# print(vertices)
 
 # DFS
 initial_root = vertices.vertex_list[0]
