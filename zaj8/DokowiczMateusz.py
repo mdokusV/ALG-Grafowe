@@ -11,10 +11,10 @@ class TreeCache:
     def __hash__(self) -> int:
         return hash((self.roots, self.disconnected))
     def __eq__(self, other) -> bool:
-        return self.disconnected == other.children and self.roots == other.roots
+        return self.disconnected == other.disconnected and self.roots == other.roots
 
     def __str__(self) -> str:
-        return f"roots: {self.roots}, children: {self.disconnected}"
+        return f"roots: {self.roots}, disconnected: {self.disconnected}"
 
 
 class Vertex:
