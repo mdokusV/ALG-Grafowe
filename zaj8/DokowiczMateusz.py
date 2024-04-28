@@ -122,8 +122,9 @@ class Vertices:
 
                     # go deeper to next vertex
                     next_vertex = self.waiting_to_check.pop()
-                    number_of_found_trees += self.dfs(next_vertex)
-                    self.add_to_cache(number_of_found_trees)
+                    new_trees = self.dfs(next_vertex)
+                    number_of_found_trees += new_trees
+                    self.add_to_cache(new_trees)
 
             # backtrack to previous vertex state as if we have not visited its children
             # print(f"back from {next_vertex.index} to {vertex.index}")
