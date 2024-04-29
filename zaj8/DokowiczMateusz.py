@@ -1,5 +1,6 @@
 from pprint import pprint
 
+
 COMPLETE_GRAPH = True
 
 class TreeCache:
@@ -176,7 +177,7 @@ with open("Trees.txt", "r") as file:
 # pprint(graph)
 
 if COMPLETE_GRAPH:
-    size = 8
+    size = 7
     graph = [[1 if i != j else 0 for j in range(size)] for i in range(size)]
 
 
@@ -196,5 +197,6 @@ for i in range(len(graph)):
 initial_root = vertices.vertex_list[0]
 vertices.init_dfs(initial_root)
 
-print("expected: 262144")
-print("Is equal:", vertices.number_of_trees == 262144)
+if COMPLETE_GRAPH:
+    print("expected: ", pow(size, size - 2))
+    print("Is equal:", vertices.number_of_trees == pow(size, size - 2))
