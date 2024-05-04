@@ -2,14 +2,26 @@ from pprint import pprint
 
 COMPLETE_GRAPH = True
 
+
+class CashingItems:
+    def __init__(self):
+        self.all_subtrees: list[Edge] = []
+        self.tree_number: int = 0
+
+
 class TreeCache:
 
-    def __init__(self, roots: list | set, children: list | set):
+    def __init__(
+        self, roots: list | set, children: list | set, cashing_items: CashingItems
+    ):
         self.roots: frozenset = frozenset(roots)
         self.disconnected: frozenset = frozenset(children)
+        self.all_subtrees: list[Edge] = cashing_items.all_subtrees
+        self.tree_number: int = cashing_items.tree_number
 
     def __hash__(self) -> int:
         return hash((self.roots, self.disconnected))
+
     def __eq__(self, other) -> bool:
         return self.disconnected == other.disconnected and self.roots == other.roots
 
@@ -43,6 +55,12 @@ class Vertex:
             vert.free_children[self.index] = self
 
 
+class Edge:
+    def __init__(self, v1: Vertex, v2: Vertex):
+        self.v1 = v1
+        self.v2 = v2
+
+
 def get_permutation(items: list[Vertex], n: int) -> tuple[list[Vertex], bool]:
     if len(items) == 0:
         if n == 0:
@@ -64,7 +82,7 @@ def show_permutation(items: list[Vertex]) -> str:
 class Vertices:
     def __init__(self, vertices: list[Vertex]):
         self.vertex_list = vertices
-        self.tree_cache: dict[TreeCache, int] = {}
+        self.tree_cache: dict[TreeCache, TreeCache] = {}
         self.unmarked_vertices: set[Vertex] = set(self.vertex_list)
         self.waiting_to_check: list[Vertex] = []
         self.number_of_trees = 0
@@ -79,23 +97,28 @@ class Vertices:
         self.dfs(vertex)
         print(self.number_of_trees)
 
-    def in_tree_cache(self) -> int:
+    def get_tree_cache(self, cashing_items) -> TreeCache | None:
         roots = []
-        if len(self.waiting_to_check) > 1:
+        if len(self.waiting_to_check) >= 1:
             roots = self.waiting_to_check
 
-        return self.tree_cache.get(TreeCache(roots, self.unmarked_vertices), -1)
+        checking_tree = TreeCache(roots, self.unmarked_vertices, cashing_items)
+        if checking_tree in self.tree_cache:
+            return self.tree_cache[checking_tree]
 
-    def add_to_cache(self, subtree_value: int):
-        self.tree_cache[TreeCache(self.waiting_to_check, self.unmarked_vertices)] = (
-            subtree_value
+        return None
+
+    def add_to_cache(self, cashing_items: CashingItems):
+        new_tree = TreeCache(
+            self.waiting_to_check, self.unmarked_vertices, cashing_items
         )
+        self.tree_cache[new_tree] = new_tree
 
-    def dfs(self, vertex: Vertex) -> int:
+    def dfs(self, vertex: Vertex) -> CashingItems:
         # print(vertex)
 
         # initiate permutation for all available children
-        number_of_found_trees = 0
+        cashing_items = CashingItems()
         permutation_number = 0
         vertex.currently_permuting_children = list(vertex.free_children.values())
         permutation, err = get_permutation(
@@ -107,23 +130,23 @@ class Vertices:
             raise SystemError("Internal system error in dfs")
         while True:
             if not self.add_children_from_permutation(permutation):
-                value = self.in_tree_cache()
-                if value != -1:
-                    self.number_of_trees += value
-                    number_of_found_trees += value
+                found_cashed_tree = self.get_tree_cache(cashing_items)
+                if found_cashed_tree is not None:
+                    self.number_of_trees += found_cashed_tree.tree_number
+                    cashing_items.tree_number += found_cashed_tree.tree_number
                 else:
                     # when there is no more waiting vertices we backtrack and add tree if there is one
                     if len(self.waiting_to_check) == 0:
                         if len(self.unmarked_vertices) == 0:
                             self.number_of_trees += 1
-                            number_of_found_trees += 1
+                            cashing_items.tree_number += 1
                         self.waiting_to_check.append(vertex)
-                        return number_of_found_trees
+                        return cashing_items
 
                     # go deeper to next vertex
                     next_vertex = self.waiting_to_check.pop()
                     new_trees = self.dfs(next_vertex)
-                    number_of_found_trees += new_trees
+                    cashing_items.tree_number += new_trees.tree_number
                     self.add_to_cache(new_trees)
 
             # backtrack to previous vertex state as if we have not visited its children
@@ -139,7 +162,7 @@ class Vertices:
             # we checked all permutations so we return
             if overflow:
                 self.waiting_to_check.append(vertex)
-                return number_of_found_trees
+                return cashing_items
 
     def add_children_from_permutation(self, permutation: list[Vertex]) -> bool:
         is_orphan = False
@@ -196,5 +219,5 @@ for i in range(len(graph)):
 initial_root = vertices.vertex_list[0]
 vertices.init_dfs(initial_root)
 
-print("expected: 262144")
-print("Is equal:", vertices.number_of_trees == 262144)
+print("expected: ", pow(size, size - 2))
+print("Is equal:", vertices.number_of_trees == pow(size, size - 2))
