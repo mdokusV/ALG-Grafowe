@@ -1,5 +1,6 @@
 from pprint import pprint
 
+
 COMPLETE_GRAPH = True
 
 
@@ -243,5 +244,6 @@ for i in range(len(graph)):
 initial_root = vertices.vertex_list[0]
 vertices.init_dfs(initial_root)
 
-print("expected: ", pow(size, size - 2))
-print("Is equal:", vertices.number_of_trees == pow(size, size - 2))
+if COMPLETE_GRAPH:
+    print("expected: ", pow(size, size - 2))
+    print("Is equal:", vertices.number_of_trees == pow(size, size - 2))
