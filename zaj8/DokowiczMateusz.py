@@ -1,24 +1,54 @@
 from pprint import pprint
 
 
-COMPLETE_GRAPH = True
+COMPLETE_GRAPH = False
+
+
+class Edge:
+
+    def __init__(self, v1: "Vertex", v2: "Vertex"):
+        self.v1 = v1.index
+        self.v2 = v2.index
+
+    def __str__(self):
+        return f"({self.v1+1} {self.v2+1})"
 
 
 class CashingItems:
 
-    def __init__(self, all_subtrees: list = [], tree_number: int = 0):
-        self.all_subtrees: list[list[Edge]] = all_subtrees
-        self.new_subtrees: list[list[Edge]] = all_subtrees
+    def __init__(self, all_subtrees: list[list[Edge]], tree_number: int):
+        self.subtrees: list[list[Edge]] = all_subtrees
         self.tree_number: int = tree_number
 
-    def add(self, new_edges: list[Edge], new_tree_number: int):
-        self.tree_number += new_tree_number
+    def add(self, new_edges: list[Edge], old_tree: "CashingItems"):
+        self.tree_number += old_tree.tree_number
+        if old_tree.tree_number == 0:
+            return
 
-        for subtree in self.new_subtrees:
-            subtree += new_edges
+        if old_tree.subtrees == []:
+            new_list = [new_edges]
+        elif old_tree.subtrees == [[]] and new_edges == []:
+            new_list = [[]]
+        else:
+            new_list = [new_edges + subtree for subtree in old_tree.subtrees]
 
-        if len(self.new_subtrees) != self.tree_number:
-            raise SystemError("Number Of trees does not match")
+        self.subtrees.extend(new_list)
+
+        if len(self.subtrees) != self.tree_number:
+            raise SystemError("Number of trees does not match")
+
+    def show(self):
+        import io
+
+        output_buffer = io.StringIO()
+        for ind, sublist in enumerate(self.subtrees):
+            output_buffer.write(f"{ind + 1}: {' '.join(map(str, sublist))}\n")
+
+        if COMPLETE_GRAPH:
+            with open("output.txt", "w") as f:
+                f.write(output_buffer.getvalue())
+        else:
+            print(output_buffer.getvalue(), end="")
 
 
 class TreeCache:
@@ -28,7 +58,7 @@ class TreeCache:
     ):
         self.roots: frozenset = frozenset(roots)
         self.disconnected: frozenset = frozenset(children)
-        self.all_subtrees: list[list[Edge]] = cashing_items.all_subtrees
+        self.all_subtrees: list[list[Edge]] = cashing_items.subtrees
         self.tree_number: int = cashing_items.tree_number
 
     def __hash__(self) -> int:
@@ -67,13 +97,6 @@ class Vertex:
         for vert in self.connects:
             vert.free_children[self.index] = self
 
-
-class Edge:
-    def __init__(self, v1: Vertex, v2: Vertex):
-        self.v1 = v1.index
-        self.v2 = v2.index
-
-
 def get_permutation(items: list[Vertex], n: int) -> tuple[list[Vertex], bool]:
     if len(items) == 0:
         if n == 0:
@@ -88,7 +111,6 @@ def get_permutation(items: list[Vertex], n: int) -> tuple[list[Vertex], bool]:
 
 def show_permutation(items: list[Vertex]) -> str:
     out_string = " ".join([str(item.index) for item in items])
-    # print(out_string)
     return out_string
 
 
@@ -107,8 +129,9 @@ class Vertices:
     def init_dfs(self, vertex: Vertex):
         vertex.remove_child()
         self.unmarked_vertices.remove(vertex)
-        self.dfs(vertex)
-        print(self.number_of_trees)
+        output = self.dfs(vertex)
+        output.show()
+        # print(output.tree_number)
 
     def get_tree_cache(self, cashing_items) -> CashingItems | None:
         roots = []
@@ -130,11 +153,12 @@ class Vertices:
         )
         self.tree_cache[new_tree] = new_tree
 
-    def dfs(self, vertex: Vertex) -> CashingItems:
-        # print(vertex)
+    def generate_edges(self, parent: Vertex, permutation: list[Vertex]):
+        return [Edge(parent, child) for child in permutation]
 
+    def dfs(self, vertex: Vertex) -> CashingItems:
         # initiate permutation for all available children
-        cashing_items = CashingItems()
+        cashing_items = CashingItems([], 0)
         permutation_number = 0
         vertex.currently_permuting_children = list(vertex.free_children.values())
         permutation, err = get_permutation(
@@ -149,17 +173,18 @@ class Vertices:
                 found_cashed_tree = self.get_tree_cache(cashing_items)
                 if found_cashed_tree is not None:
                     self.number_of_trees += found_cashed_tree.tree_number
-                    cashing_items.add(found_cashed_tree)
+                    cashing_items.add(
+                        self.generate_edges(vertex, permutation),
+                        found_cashed_tree,
+                    )
                 else:
                     # when there is no more waiting vertices we backtrack and add tree if there is one
                     if len(self.waiting_to_check) == 0:
                         if len(self.unmarked_vertices) == 0:
                             self.number_of_trees += 1
-                            cashing_items.tree_number += 1
-                            if vertex.parent is None:
-                                raise SystemError("Parent is None")
-                            cashing_items.all_subtrees.append(
-                                [Edge(vertex, vertex.parent)]
+                            cashing_items.add(
+                                self.generate_edges(vertex, permutation),
+                                CashingItems([], 1),
                             )
                         self.waiting_to_check.append(vertex)
                         return cashing_items
@@ -167,11 +192,13 @@ class Vertices:
                     # go deeper to next vertex
                     next_vertex = self.waiting_to_check.pop()
                     new_trees = self.dfs(next_vertex)
-                    cashing_items.add(new_trees)
+                    cashing_items.add(
+                        self.generate_edges(vertex, permutation),
+                        new_trees,
+                    )
                     self.add_to_cache(new_trees)
 
             # backtrack to previous vertex state as if we have not visited its children
-            # print(f"back from {next_vertex.index} to {vertex.index}")
             self.reverse_add_children_from_permutation(permutation)
 
             # generate next permutation
@@ -224,7 +251,7 @@ with open("Trees.txt", "r") as file:
 # pprint(graph)
 
 if COMPLETE_GRAPH:
-    size = 5
+    size = 10
     graph = [[1 if i != j else 0 for j in range(size)] for i in range(size)]
 
 
@@ -236,7 +263,6 @@ for i in range(len(graph)):
             vertices.vertex_list[i].degree += 1
             vertices.vertex_list[i].free_children[j] = vertices.vertex_list[j]
 
-# print(vertices)
 
 # DFS
 
