@@ -1,7 +1,9 @@
-from pprint import pprint
-
+import io
 
 COMPLETE_GRAPH = False
+
+OUTPUT_BUFFER = io.StringIO()
+OUTPUT_FILE = open("output.txt", "w")
 
 
 class Edge:
@@ -16,8 +18,12 @@ class Edge:
 
 class CashingItems:
 
-    def __init__(self, all_subtrees: list[list[Edge]], tree_number: int):
-        self.subtrees: list[list[Edge]] = all_subtrees
+    def __init__(
+        self,
+        all_subtrees: list[tuple[list[Edge], "CashingItems | None"]],
+        tree_number: int,
+    ):
+        self.subtrees: list[tuple[list[Edge], "CashingItems | None"]] = all_subtrees
         self.tree_number: int = tree_number
 
     def add(self, new_edges: list[Edge], old_tree: "CashingItems"):
@@ -26,29 +32,42 @@ class CashingItems:
             return
 
         if old_tree.subtrees == []:
-            new_list = [new_edges]
+            new_items = (new_edges, None)
         elif old_tree.subtrees == [[]] and new_edges == []:
-            new_list = [[]]
+            new_items = ([], None)
         else:
-            new_list = [new_edges + subtree for subtree in old_tree.subtrees]
+            new_items = (new_edges, old_tree)
 
-        self.subtrees.extend(new_list)
+        self.subtrees.append(new_items)
 
-        if len(self.subtrees) != self.tree_number:
-            raise SystemError("Number of trees does not match")
+        # if len(self.subtrees) != self.tree_number:
+        #     raise SystemError("Number of trees does not match")
+
+    def show_full_tree(self, prev_string: str, count: int) -> int:
+        for sublist in self.subtrees:
+            new_string = prev_string
+            new_string += f"{''.join(map(str, sublist[0]))}"
+            if sublist[1] is None:
+                OUTPUT_BUFFER.write(f"{count} {new_string}\n")
+                count += 1
+                if count % 10000 == 0:
+                    self.write()
+            else:
+                count = sublist[1].show_full_tree(new_string, count)
+        return count
 
     def show(self):
-        import io
+        self.show_full_tree("", 1)
+        OUTPUT_BUFFER.write(f"Tree number: {self.tree_number}\n")
 
-        output_buffer = io.StringIO()
-        for ind, sublist in enumerate(self.subtrees):
-            output_buffer.write(f"{ind + 1}: {' '.join(map(str, sublist))}\n")
+        self.write()
 
+    def write(self):
         if COMPLETE_GRAPH:
-            with open("output.txt", "w") as f:
-                f.write(output_buffer.getvalue())
+            OUTPUT_FILE.write(OUTPUT_BUFFER.getvalue())
         else:
-            print(output_buffer.getvalue(), end="")
+            print(OUTPUT_BUFFER.getvalue(), end="")
+        OUTPUT_BUFFER.truncate(0)
 
 
 class TreeCache:
@@ -58,7 +77,9 @@ class TreeCache:
     ):
         self.roots: frozenset = frozenset(roots)
         self.disconnected: frozenset = frozenset(children)
-        self.all_subtrees: list[list[Edge]] = cashing_items.subtrees
+        self.all_subtrees: list[tuple[list[Edge], "CashingItems | None"]] = (
+            cashing_items.subtrees
+        )
         self.tree_number: int = cashing_items.tree_number
 
     def __hash__(self) -> int:
@@ -130,7 +151,11 @@ class Vertices:
         vertex.remove_child()
         self.unmarked_vertices.remove(vertex)
         output = self.dfs(vertex)
+        print(
+            f"Done Calculation: number of vertices = {output.tree_number}, Printing output"
+        )
         output.show()
+        print("Done printing output")
         # print(output.tree_number)
 
     def get_tree_cache(self, cashing_items) -> CashingItems | None:
@@ -251,7 +276,7 @@ with open("Trees.txt", "r") as file:
 # pprint(graph)
 
 if COMPLETE_GRAPH:
-    size = 10
+    size = 8
     graph = [[1 if i != j else 0 for j in range(size)] for i in range(size)]
 
 
@@ -272,4 +297,5 @@ vertices.init_dfs(initial_root)
 
 if COMPLETE_GRAPH:
     print("expected: ", pow(size, size - 2))
+    print("found: ", vertices.number_of_trees)
     print("Is equal:", vertices.number_of_trees == pow(size, size - 2))
